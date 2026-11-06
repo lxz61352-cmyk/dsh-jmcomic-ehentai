@@ -22,7 +22,7 @@ import {
 import { recommend, findNew, ackNew } from './lib/recommend.js'
 import { registerWeb } from './lib/web.js'
 import { startExplore, exploreStatus, readExploreResult, rankItems, qPriorMap, sortItems, filterBasic, matchQuery, strictFilter } from './lib/explore.js'
-import { recommendOne, brief } from './lib/rec.js'
+import { recommendOne, recommendMany, brief } from './lib/rec.js'
 import { startEhDownload, ehJob, deleteEhDownload } from './lib/ehdl.js'
 import { setEhFavorite } from './lib/ehfav.js'
 import { protect, unprotect } from './lib/secret.js'
@@ -894,6 +894,7 @@ export function apply(ctx, config) {
     pruneCovers: (days) => pruneCovers(days),
     favState: (id) => favState(id),
     recOne: (opts, c) => recommendOne(c, opts),
+    recMany: (opts, c) => recommendMany(c, opts),
     recBrief: (it) => brief(it),
     ehDownload: (url, c) => startEhDownload(c, url, join(jmRoot(), '..', 'eh_site')),
     ehStatus: (url) => ehJob(url),
