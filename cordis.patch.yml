@@ -1,0 +1,9 @@
+# dsh-jmcomic/ehentai bundle patch
+# 安装：把本包放进 profiles/<profile>/node_modules/ 后，在 profile 的
+# cordis.patch.yml 里加一条同样的 insert（或运行 dsh plugin add）。
+#
+# config 一律留空——代理、cookie 这些因机器而异，硬编码会让别人装上就起不来。
+# 用户配置写到 ~/.dsh/dsh-jmcomic-ehentai/settings.json，优先级高于这里的 config。
+- insert:
+    - id: "@dsh-jmcomic/ehentai"
+      name: "@dsh-jmcomic/ehentai"

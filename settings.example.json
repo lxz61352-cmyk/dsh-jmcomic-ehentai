@@ -1,0 +1,27 @@
+{
+  "_说明": "把这四项填好后另存为 settings.json（同一目录），插件启动时读取；改完重启 DSH 生效。",
+  "useExhentai": false,
+  "proxy": "127.0.0.1:7890",
+  "exhentaiCookies": {
+    "ipbMemberId": "",
+    "ipbPassHash": "",
+    "igneous": ""
+  },
+  "ehentaiCookie": "",
+  "profile": {
+    "halfLifeDays": 365,
+    "minCount": 2,
+    "topN": 60
+  },
+  "recommend": {
+    "topK": 3,
+    "pages": 2,
+    "limit": 20
+  },
+  "push": {
+    "enabled": false,
+    "intervalMinutes": 360,
+    "days": 7,
+    "maxItems": 10
+  }
+}
