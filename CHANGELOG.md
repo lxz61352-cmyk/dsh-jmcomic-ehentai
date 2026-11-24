@@ -1,5 +1,31 @@
 # 更新记录
 
+## 0.2.3 — 2026-11-24
+
+界面反馈那一批，全部落在这里。
+
+- **进收藏页之后出不去**：`lib/web.js` 的 header 只有站内导航，没有退回 DSH 或关窗口的入口；
+  加上 0.2.1 之后入口改成新标签打开，而桌面端没有浏览器标签栏，用户点进去就回不来。
+  - header 末尾加「回 DSH」（`../`）与「关闭」两个出口；
+  - 关闭按钮先试 `window.close()`，关不掉（同窗口跳进来的情况）再 `history.back()`，最后退到 `../`。
+- **窄窗口下按钮错位**：`header` 是 `flex-wrap:nowrap`，且 `.sub` 没有 `min-width:0`
+  （flex 子项默认 `min-width:auto`，内容多长都压不下去），窗口一窄 `nav` 就被挤出容器，
+  视觉位置和点击区域对不上。
+  - `.sub` 加 `min-width:0`，`header` 改 `flex-wrap:wrap`，`nav` 自己也允许换行；
+  - 加 `@media (max-width:860px)`：header 收窄、隐藏 `.sub`、`nav` 独占一行可横向滚动；560px 以下缩卡片最小宽度。
+- **封面取不到时一片空白**：`<img>` 没有失败兜底。改成在 `page()` 里挂一个捕获阶段的
+  `error` 监听，任何 `IMG` 加载失败都替换成「封面取不到」占位块 —— 一处覆盖所有页面。
+  - 顺带核实：本机用真实数据跑通了 `ehgt.org` 封面（`200 / 11296 字节 / image/webp`），
+    `/thumb` 代理本身没问题；之前那边全空白是出口网络不通。
+- **推荐页只有 JM**：`/recommend` 只接了 JM 的 `recMany`。加 JM / E 站两个 tab，
+  E 站 tab 走新路由 `POST /recommend/eh`（调 `deps.recEh`，复用 `ehentai_recommend` 那套
+  tag 画像打分），返回的条目带 `thumb`，卡片能直接显示封面。
+  - `lib/recommend.js` 的返回值补上 `thumb` 字段（原来只给了 gid/token/title/tags，页面没封面可用）。
+- **两处小毛病**：收藏页那句玩笑式 notice 改成中性说明（里站需要 igneous）；顶栏版本号改为
+  从 `package.json` 读（`deps.version`），不再硬编码 `b1108a`。
+- 新增 `test/test_ui.mjs`：把上面这些（出口按钮、版本号来源、图片失败占位、推荐页两个 tab、
+  中性文案、header 可换行/可收缩/有媒体查询）固化成断言。
+
 ## 0.2.2 — 2026-11-24
 
 - **`package.json` 被写成带 UTF-8 BOM**，宿主 `dsh plugin list` 直接

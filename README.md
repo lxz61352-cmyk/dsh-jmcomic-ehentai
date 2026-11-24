@@ -31,11 +31,13 @@
 | `/dsh-ehentai/` | 设置 |
 | `/dsh-ehentai/jm` | JM 收藏封面墙（右键菜单：打开 / 查作者 / 下载 / 取消收藏） |
 | `/dsh-ehentai/eh` | E 站收藏 |
-| `/dsh-ehentai/recommend` | 推荐（可自动打开内置窗口） |
+| `/dsh-ehentai/recommend` | 推荐：JM 收藏画像 / E 站 tag 画像两个 tab（可自动打开内置窗口） |
 | `/dsh-ehentai/explore` | 检索结果 |
 | `/dsh-ehentai/jm/stats` | 词条与画师统计 |
 | `/dsh-ehentai/view` `/ehview` | 内置浏览页（顶栏带收藏 / 下载） |
 | `/dsh-ehentai/player` | 本地阅读器（上下翻页、上一本 / 下一本） |
+
+所有页面顶栏末尾都有「回 DSH」和「关闭」两个出口——插件页通常是以新窗口打开的，桌面端没有浏览器标签栏，没有出口就等于进得去出不来。
 
 ## 安装
 
@@ -184,6 +186,7 @@ test/test_scripts.mjs  检查渲染出的内联脚本语法
 test/test_units.mjs    离线单测：游标解析 / cookie 口径 / 302 跟随 / Python 探测
 test/test_client.mjs   面板入口检查：三个按钮的 href，以及「新标签打不开就退当前窗口」
 test/test_encoding.mjs 编码检查：文件不带 BOM、package.json 能被裸 JSON.parse 解析
+test/test_ui.mjs       页面回归：出口按钮、版本号来源、图片失败占位、推荐页两个 tab、窄屏 CSS
 ```
 
 `npm test` 跑不到（没有 package 脚本），直接：
@@ -192,6 +195,7 @@ test/test_encoding.mjs 编码检查：文件不带 BOM、package.json 能被裸 
 node test/test_units.mjs
 node test/test_client.mjs
 node test/test_encoding.mjs
+node test/test_ui.mjs
 node test/test_routes.mjs
 node test/test_scripts.mjs
 ```

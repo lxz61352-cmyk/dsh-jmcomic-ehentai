@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 
 import { search, gdata, favoritesPage, galleryUrl } from './lib/eh.js'
 import {
@@ -61,6 +62,16 @@ function loadSettings() {
     return JSON.parse(readFileSync(settingsPath(), 'utf8'))
   } catch {
     return {}
+  }
+}
+
+/** 插件版本号：页面顶栏用它，别在 HTML 里写死（写死必忘改） */
+function pkgVersion() {
+  try {
+    const p = fileURLToPath(new URL('./package.json', import.meta.url))
+    return String(JSON.parse(readFileSync(p, 'utf8')).version || '')
+  } catch {
+    return ''
   }
 }
 
@@ -906,6 +917,22 @@ export function apply(ctx, config) {
     recOne: (opts, c) => recommendOne(c, opts),
     recMany: (opts, c) => recommendMany(c, opts),
     recBrief: (it) => brief(it),
+    version: pkgVersion(),
+    /**
+     * E 站画像推荐（页面上的「E 站画像推荐」tab）。
+     * 与 ehentai_recommend 工具同一套逻辑：读 ehentai.db 的 tag 画像 → 组搜索式 → 打分排序。
+     */
+    recEh: (opts, c) => {
+      const rows = getProfile()
+      const max = rows.length ? rows[0].weight || 1 : 1
+      const prof = rows.map((t) => ({
+        tag: t.tag,
+        weight: t.weight,
+        count: t.count,
+        norm: (t.weight || 0) / max,
+      }))
+      return recommend(c, prof, opts)
+    },
     ehDownload: (url, c) => startEhDownload(c, url, join(jmRoot(), '..', 'eh_site')),
     ehStatus: (url) => ehJob(url),
     ehFavState: (gid) => {
