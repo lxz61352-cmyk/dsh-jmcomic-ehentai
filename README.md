@@ -39,8 +39,11 @@
 
 ## 安装
 
-1. 把本包放进 `<dsh 用户目录>/profiles/<profile>/node_modules/@dsh-jmcomic/ehentai/`
+插件要能被 DSH 的模块解析找到，而它 `import` 了宿主私有包 `@deepseek-ai/dsh-tools`。两种情况：
 
+**A. 放进 profile 的 node_modules（最稳）**
+
+1. 把本包放进 `<dsh 用户目录>/profiles/<profile>/node_modules/@dsh-jmcomic/ehentai/`
 2. 在该 profile 的 `cordis.patch.yml` 末尾追加：
 
 ```yaml
@@ -50,16 +53,40 @@
 
 3. 重启 DSH。日志里出现 `dsh-jmcomic/ehentai` 即加载成功。
 
+**B. 用 `link:` 装在 profile 外**（插件源码放在别处，profile 只放链接）
+
+这时 Node 按真实路径逐级向上找 `node_modules`，找不到宿主私有包，典型报错：
+
+```
+failed to import: Error [ERR_MODULE_NOT_FOUND]:
+Cannot find package '@deepseek-ai/dsh-tools' imported from <插件目录>\index.js
+```
+
+两条出路：
+
+- **新版桌面版**自带 `resources/host-module-fallback.mjs`（`harness-node-entry.mjs` 里 `registerHostModuleFallback()`），会把找不到的 `@deepseek-ai/*` 回退到安装目录解析，这种情况不用额外操作；
+- **老版本**没有这个兜底，需要在插件目录里建一个指向宿主包的 junction：
+
+```powershell
+cmd /c mklink /J "<插件目录>\node_modules\@deepseek-ai\dsh-tools" `
+    "<DSH 安装目录>\resources\app\dsh\node_modules\@deepseek-ai\dsh-tools"
+```
+
+覆盖或重装插件目录后这个 junction 会丢，要重建。
+
 ## 依赖
 
-- Node.js ≥ 20（`node:sqlite` 需要较新版本）
-- Python 3.13 + `jmcomic`（`pip install jmcomic`），JM 的检索与下载走它
+- Node.js ≥ 22（`node:sqlite` 是 22 才有的，20 上直接起不来）
+- Python + `jmcomic`、`pillow`（`pip install jmcomic pillow`），JM 的检索与下载走它
+  - 解释器**不用指定版本**：`lib/pycmd.js` 按 `jm.python` → `DSH_JMPY` → `py -3.13` → `py -3` → `python` 顺序探测
+  - 5 个 `.py` 脚本在仓库 `scripts/` 下，运行时要复制到数据目录（见下）
 - 一个能访问 e-hentai.org / 18comic 的代理（大陆环境必需）
 - 仅用检索时**不需要账号**；收藏与下载才需要
 
+
 ## 配置
 
-配置写在 `~/.dsh/dsh-jmcomic-ehentai/settings.json`（Windows 为 `%DSH_HOME%\.dsh\dsh-jmcomic-ehentai\`），可参照 `settings.example.json`。
+配置写在数据目录的 `settings.json`，可参照 `settings.example.json`。数据目录的定位规则：`DSH_HOME` 已经以 `.dsh` 结尾就直接用，否则在它下面补一层 `.dsh`，最终是 `<那个目录>/dsh-jmcomic-ehentai/`。
 
 | 字段 | 说明 |
 |---|---|
@@ -67,9 +94,29 @@
 | `jm.user` / `jm.pass` | JM 账号，密码**写盘时自动加密** |
 | `jm.web` | JM 网页域名，默认 `18comic.vip` |
 | `jm.gap` | 下载时每页间隔秒数，默认 0.8 |
+| `jm.python` | 手动指定 Python 解释器（如 `C:\Python312\python.exe`），留空自动探测 |
 | `useExhentai` | 用 ExHentai（内容更全）还是 E-Hentai |
-| `exhentaiCookies` | 三个 cookie，同样写盘时加密 |
+| `ehentaiCookie` | **表站**用的整串 cookie（F12 → `document.cookie`） |
+| `exhentaiCookies` | **里站**用的三个 cookie，同样写盘时加密 |
+| `ehOriginal` | E 站下载是否取原图，默认 `true`；设 `false` 只取显示版（省流量） |
+| `ehFavCat` | 同步哪个收藏夹，默认 `0`（Favorites 0）；设 `all` 一次同步全部收藏夹 |
 | `openMode` | `dsh` 走内置窗口，`os` 走系统浏览器 |
+
+两个 cookie 字段的取舍：表站填 `ehentaiCookie` 整串，里站填 `exhentaiCookies` 三个分量；两者都填也能用，`lib/eh.js` 的 `cookieOf()` 是唯一口径（里站三分量优先，表站整串优先），同步与下载共用同一个。
+
+### Python 脚本放哪
+
+`.py` 不进插件目录，放数据目录：
+
+```
+<数据目录>/
+    settings.json
+    ehentai.db / jm.json / jm_albums.json / jm_downloads.json
+    jm_explore.py  jm_fetch.py  jm_download_one.py  jm_fav.py  jm_thumbs.py
+```
+
+从仓库 `scripts/` 复制过去即可。升级插件时这几个脚本不用动，但**改了要同步回 `scripts/`**——它们不进 `node_modules`，很容易两边分叉。
+
 
 ### 凭证怎么存的
 
@@ -90,6 +137,22 @@ JM 密码与 E 站 cookie 用 **Windows DPAPI** 加密（`lib/secret.js`），�
 
 **里站只认 `igneous`**。缺它、或者它是 `mystery` 时，服务端返回 `200` 加空页面——不报错、不 403、不跳转，纯静默失败。所以判断成功别看状态码，看响应体长度。
 
+## 分页与限流
+
+E 站三种分页各有各的规矩，`?page=N` 只有画廊页认：
+
+| 位置 | 分页方式 |
+|---|---|
+| 搜索结果页 | 游标 `?f_search=...&next=<gid>`，页面里给 `<a id="unext" href="...">` |
+| 收藏页 | 游标 `favorites.php?next=<最后一本的 gid>-<时间戳>`，同样从 `<a id="unext">` 抓 |
+| 画廊页（图片列表） | `?p=N` —— 这个才是 query 参数 |
+
+前两种都由 `lib/eh.js` 的 `parseListPage()` 抽出下一页地址，调用方逐页跟游标走；游标值猜不出来，也只能顺着一页页跳。自己拼 `?page=N` 会永远拿回第一页：收藏同步只同步到 50 条、推荐里同一本出现两三次，都是这个毛病。翻页时还会按 gid 去重，避免同一本被重复评分。
+
+**限流**：E 站限流时经常仍然回 HTTP 200，正文只有一句
+`This IP address has been temporarily banned due to an excessive request rate`。
+`assertNotBanned()` 会把它认成明确的限流错误，而不是"没搜到结果"。翻页与推荐都会连着打好几个请求，页间已加 1.5–1.8 秒间隔；还是被限就等几分钟，或者换代理出口。
+
 ## 剧情省流
 
 三步，顺序不能乱：
@@ -103,18 +166,30 @@ JM 密码与 E 站 cookie 用 **Windows DPAPI** 加密（`lib/secret.js`），�
 ```
 index.js            插件入口，注册 11 个工具
 client.js           前端半边（面板卡片与设置分区）
-lib/http.js         带 HTTP 代理的请求（CONNECT 隧道 + TLS）
+lib/http.js         带 HTTP 代理的请求（CONNECT 隧道 + TLS），requestFollow 手动跟 302
 lib/secret.js       DPAPI 凭证加密
 lib/store.js        SQLite 存储 + 偏好画像计算
-lib/eh.js           E-Hentai 客户端：搜索 / gdata / 收藏页解析
-lib/ehdl.js         E 站画廊下载（含分页）
+lib/pycmd.js        Python 解释器探测（别在业务代码里写死 py -3.13）
+lib/eh.js           E-Hentai 客户端：搜索 / gdata / 收藏页解析 / cookie 口径
+lib/recommend.js    按画像搜索、打分排序
+lib/ehdl.js         E 站画廊下载（原图、换节点、断点续传）
 lib/ehfav.js        E 站收藏 / 取消收藏
 lib/jm.js           JM 数据、下载队列、封面缓存
 lib/explore.js      检索、严格校验、打分排序
 lib/rec.js          推荐
 lib/web.js          全部路由与页面渲染
+scripts/*.py        JM 的 5 个脚本副本（运行时要复制到数据目录）
 test/test_routes.mjs   把全部路由打一遍
 test/test_scripts.mjs  检查渲染出的内联脚本语法
+test/test_units.mjs    离线单测：游标解析 / cookie 口径 / 302 跟随 / Python 探测
+```
+
+`npm test` 跑不到（没有 package 脚本），直接：
+
+```powershell
+node test/test_units.mjs
+node test/test_routes.mjs
+node test/test_scripts.mjs
 ```
 
 ## 已知限制
@@ -122,6 +197,7 @@ test/test_scripts.mjs  检查渲染出的内联脚本语法
 - **标签不准**：站点标签打得不匀，作品名常只出现在标题里。检索加了严格校验与「无法校验的词」兜底，但仍会有偏差
 - **作品名要给双语**：`偶像大师|アイドルマスター`——中文译名在站点标签和标题里往往不存在
 - **E 站下载速度**：每张间隔 1.2 秒，290 页要十几分钟；触发站点带宽限制需等一段时间
+- **个别图下不来不是 bug**：少数 hath 节点带非标端口、TLS 握手直接被掐，插件会用站点的 `?nl=` 机制换三轮节点，还是不通就说明那个 `fileindex` 在站点侧没有可用节点，去网页手动补。缺哪几页会记在下载任务的 `failedPages` 里
 - **里站门槛**：拿不到 `igneous` 就用不了 ExHentai，表站内容池窄一截
 - **正则解析**：站点改版后选择器可能失效，届时改 `lib/eh.js` 的 `parseListPage`
 

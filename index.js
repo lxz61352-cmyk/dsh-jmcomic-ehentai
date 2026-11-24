@@ -3,7 +3,7 @@
  *
  * 设计要点：
  *   · 不依赖任何其他插件（不要求心跳、不要求 dsh-im）
- *   · 数据全在本地：<dshHome>/.dsh/dsh-ehentai/
+ *   · 数据全在本地：数据目录（见 lib/store.js 的 dataDir()）
  *   · 配置优先级：用户设置(settings.json) > patch config > 默认
  *   · 推送靠插件自己的定时器，到点把结果写进 outbox，再由 system-prompt
  *     注入一句提示，模型会主动提起——不碰别家的定时器。
@@ -26,6 +26,7 @@ import { recommendOne, recommendMany, brief } from './lib/rec.js'
 import { startEhDownload, ehJob, deleteEhDownload } from './lib/ehdl.js'
 import { setEhFavorite } from './lib/ehfav.js'
 import { protect, unprotect } from './lib/secret.js'
+import { pythonCmd } from './lib/pycmd.js'
 import {
   readJm, jmRoot, startDownload, startRefresh, jmJob, jmFav,
   readDownloads, jmImages, jmImagePath, deleteCache, redownload,
@@ -218,15 +219,19 @@ export function apply(ctx, config) {
         const seenGid = new Set()
         let hasNext = false
         const startPage = Number(args.page || 0)
+        let nextUrl = ''
         for (let i = 0; i < pages; i++) {
-          const r = await search(c, keyword, startPage + i)
+          // 搜索页的翻页在路径上（/s/<searchkey>/<n>），页面同样给 <a id="unext">，优先跟它
+          const r = await search(c, keyword, startPage + i, '', nextUrl)
           for (const it of r.items) {
             if (seenGid.has(it.gid)) continue
             seenGid.add(it.gid)
             cand.push(it)
           }
           hasNext = r.hasNext
-          if (!r.hasNext) break
+          if (!r.hasNext || !r.nextUrl) break
+          nextUrl = r.nextUrl
+          await sleep(1800) // 页间限速，连着打最容易吃限流
         }
         if (!cand.length) return { ok: true, message: `「${keyword || '(无关键词)'}」没有搜索结果` }
 
@@ -300,33 +305,40 @@ export function apply(ctx, config) {
     async execute(args) {
       const c = cfg()
       const maxPages = Math.max(1, Math.min(200, Number(args.maxPages || 40)))
-      let added = 0
-      let page = 0
+      let created = 0
+      let updated = 0
+      let pagesDone = 0
+      let nextUrl = ''
       try {
-        for (; page < maxPages; page++) {
-          const r = await favoritesPage(c, page)
+        for (let p = 0; p < maxPages; p++) {
+          // 收藏页是游标翻页：?page=N 站点不认（三页返回同一份 HTML），
+          // 下一页地址只能从页面里的 <a id="unext" href="favorites.php?next=..."> 拿。
+          const r = await favoritesPage(c, p, nextUrl)
           if (!r.items.length) break
           const meta = await gdata(c, r.items.map((x) => ({ gid: x.gid, token: x.token })))
           for (const g of meta) {
-            upsertGallery(g, 'favorite')
-            added++
+            if (upsertGallery(g, 'favorite') === 'new') created++
+            else updated++
           }
+          pagesDone++
+          if (!r.hasNext || !r.nextUrl) break
+          nextUrl = r.nextUrl
           await sleep(1500) // 收藏页翻页也要限速
-          if (!r.hasNext) break
         }
       } catch (e) {
         return {
           ok: false,
-          message: `同步中断（已完成 ${page} 页，写入 ${added} 条）：${e.message}`,
+          message: `同步中断（已完成 ${pagesDone} 页，新增 ${created} 条、更新 ${updated} 条）：${e.message}`,
         }
       }
       const total = countFavorites()
       return {
         ok: true,
         message:
-          `收藏同步完成：本次处理 ${page + 1} 页、写入 ${added} 条，本地收藏共 ${total} 条。` +
+          `收藏同步完成：本次处理 ${pagesDone} 页，新增 ${created} 条、更新 ${updated} 条，本地收藏共 ${total} 条。` +
           `\n下一步可以重建偏好画像（ehentai_profile action=rebuild）。`,
-        added,
+        created,
+        updated,
         total,
       }
     },
@@ -525,9 +537,7 @@ export function apply(ctx, config) {
       const minPages = Math.max(0, Number(args.minPages || 12))
       const web = (c.jm && c.jm.web) || '18comic.vip'
 
-      const cmdLine = process.platform === 'win32'
-        ? { cmd: 'py', args: ['-3.13'] }
-        : { cmd: 'python3', args: [] }
+      const cmdLine = pythonCmd()
 
       let out = ''
       try {

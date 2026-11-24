@@ -1,6 +1,6 @@
 {
   "name": "@dsh-jmcomic/ehentai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "dsh-jmcomic/ehentai",
   
   "description": "DeepSeek Harness 插件 dsh-jmcomic/ehentai：JM 收藏与检索。JM 收藏封面墙（悬停看作者与 tag、左键打开、右键下载），E-Hentai / ExHentai 检索、收藏同步、tag 偏好画像与推荐。独立运行，不依赖其他插件。",
@@ -17,11 +17,12 @@
     "index.js",
     "client.js",
     "lib/",
+    "scripts/",
     "cordis.patch.yml",
     "icon.svg",
     "README.md",
-    "settings.example.json",
-    "NOTES.md"
+    "CHANGELOG.md",
+    "settings.example.json"
   ],
   "exports": {
     ".": "./index.js",
@@ -29,7 +30,15 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
   },
   "dsh": {
     "bundle": {

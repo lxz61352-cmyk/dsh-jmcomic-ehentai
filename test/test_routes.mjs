@@ -38,6 +38,11 @@ const deps = {
   pruneCovers: () => 0,
   favState: (id) => jm.items.some((x) => String(x.id) === String(id)),
   recOne: (opts) => ({ ok: true, mode: 'random', item: { id: '1198811', title: 't', tags: [], pages: 1, likes: 0, author: 'a' }, reason: 'mock' }),
+  recMany: (opts) => ({
+    ok: true, mode: 'random',
+    items: [{ id: '1198811', title: 't', tags: [], pages: 1, likes: 0, author: 'a' }],
+    reason: 'mock',
+  }),
   recBrief: (it) => 'mock brief',
   ehDownload: () => ({ ok: true, msg: 'mock dl' }),
   ehStatus: () => null,

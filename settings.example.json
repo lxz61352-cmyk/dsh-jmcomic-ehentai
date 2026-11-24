@@ -1,5 +1,5 @@
 {
-  "_说明": "把这四项填好后另存为 settings.json（同一目录），插件启动时读取；改完重启 DSH 生效。",
+  "_说明": "把这几项填好后另存为 settings.json（同一目录），插件启动时读取；改完重启 DSH 生效。",
   "useExhentai": false,
   "proxy": "127.0.0.1:7890",
   "exhentaiCookies": {
@@ -8,6 +8,7 @@
     "igneous": ""
   },
   "ehentaiCookie": "",
+  "ehOriginal": true,
   "profile": {
     "halfLifeDays": 365,
     "minCount": 2,
@@ -23,5 +24,12 @@
     "intervalMinutes": 360,
     "days": 7,
     "maxItems": 10
+  },
+  "jm": {
+    "user": "",
+    "pass": "",
+    "web": "18comic.vip",
+    "gap": 0.8,
+    "python": ""
   }
 }
