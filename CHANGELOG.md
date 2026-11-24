@@ -1,5 +1,18 @@
 # 更新记录
 
+## 0.2.2 — 2026-11-24
+
+- **`package.json` 被写成带 UTF-8 BOM**，宿主 `dsh plugin list` 直接
+  `JSON.parse(readFileSync(...))` 抛 `SyntaxError: Unexpected token '\uFEFF'`，插件在列表里报错。
+  - 这是我自己的锅：0.2.1 改版本号时用了 PowerShell 的
+    `Set-Content -Encoding utf8`（5.1 默认写 BOM），把 BOM 写回了文件。0.2.0 及更早是干净的。
+  - Node 的 `import` / `require` / `node --check` 都会自动剥 BOM，所以本机一切正常，
+    只有宿主的裸 `JSON.parse` 会炸——这类问题必须在测试里挡。
+- 新增 `test/test_encoding.mjs`：扫一遍被跟踪的文本文件不许有 BOM，并用**裸 `JSON.parse`**
+  校验 `package.json` / `settings.example.json`（模拟宿主读法，不走会剥 BOM 的加载器）。
+- 文档补上这个坑：改 JSON 一律用编辑器/脚本写不带 BOM 的 UTF-8，别用
+  `Set-Content -Encoding utf8`。
+
 ## 0.2.1 — 2026-11-24
 
 - **面板上的按钮点了没反应**：`client.js` 里三个入口用的是

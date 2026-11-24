@@ -183,6 +183,7 @@ test/test_routes.mjs   把全部路由打一遍
 test/test_scripts.mjs  检查渲染出的内联脚本语法
 test/test_units.mjs    离线单测：游标解析 / cookie 口径 / 302 跟随 / Python 探测
 test/test_client.mjs   面板入口检查：三个按钮的 href，以及「新标签打不开就退当前窗口」
+test/test_encoding.mjs 编码检查：文件不带 BOM、package.json 能被裸 JSON.parse 解析
 ```
 
 `npm test` 跑不到（没有 package 脚本），直接：
@@ -190,9 +191,12 @@ test/test_client.mjs   面板入口检查：三个按钮的 href，以及「新�
 ```powershell
 node test/test_units.mjs
 node test/test_client.mjs
+node test/test_encoding.mjs
 node test/test_routes.mjs
 node test/test_scripts.mjs
 ```
+
+> `test_encoding.mjs` 是给宿主侧兜底的：Node 的 `import` / `require` / `node --check` 会自动剥掉 UTF-8 BOM，所以带 BOM 的文件在本机一切正常；但宿主用裸 `JSON.parse(readFileSync(...))` 读 `package.json`，BOM 会让它抛 `SyntaxError: Unexpected token '\uFEFF'`。
 
 ## 已知限制
 
