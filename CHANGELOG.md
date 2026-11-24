@@ -1,5 +1,21 @@
 # 更新记录
 
+## 0.2.1 — 2026-11-24
+
+- **面板上的按钮点了没反应**：`client.js` 里三个入口用的是
+  `window.open(url, '_blank', 'noopener')`。带第三个 features 参数时浏览器按"弹窗"处理，
+  Electron 桌面版的 windowOpenHandler 经常直接 deny，返回 null 而不抛错，原来的
+  `try { … } catch {}` 又什么都吞掉，于是点击看起来毫无反应。
+  - 改成不带 features，断开 opener 用 `w.opener = null`；
+  - 返回 null（被拦）时退成 `window.location.assign`，至少能打开；
+  - 三个入口从 `<button>` 换成 `<a href target="_blank">`，中键、右键"在新标签打开"也能用；
+  - 面板上补一句"万一点了没反应，右键复制链接地址"。
+- 新增 `test/test_client.mjs`：离线验证 bundle 能被 ModuleLoader 收下、两处 slot 都注册、
+  三个入口的 href 正确、`window.open` 被拦时会退到当前窗口。
+- 记录一个问题定位线索：面板能显示出按钮，说明 client bundle 加载成功，但**不代表**服务端
+  路由已注册。按钮打开的是 404 时，先直接访问 `http://127.0.0.1:<端口>/dsh-ehentai/jm`
+  确认路由（本机实测 200 + HTML）。
+
 ## 0.2.0 — 2026-11-24
 
 这一版基本是"别人机器上跑一遍"逼出来的修复。原版本在本机一路顺，换台机器就是装不上、同步只进第一页、下载只拿到缩略版——都是环境依赖和几处站点机制记错，不是重写。

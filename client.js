@@ -95,11 +95,46 @@ window.__ModuleLoader__.load((() => {
         },
       }
 
-      const open = (p) => {
+      /**
+       * 打开插件自己的页面。
+       *
+       * 两个坑都踩过了：
+       *   1. 别给 window.open 传第三个 features 参数（`'noopener'`）。带特性串时
+       *      浏览器会按"弹窗"处理，Electron 桌面版的 windowOpenHandler 常常直接
+       *      deny，表现就是按钮点了没有任何反应。要断开 opener 用 w.opener = null。
+       *   2. 被拦时 window.open 返回 null 而不是抛错，所以必须有兜底：退成当前
+       *      窗口跳转，至少打得开，用户用后退就能回 DSH。
+       */
+      const openPage = (p) => {
+        const url = absAppPath(p)
+        let w = null
         try {
-          window.open(absAppPath(p), '_blank', 'noopener')
-        } catch (e) { /* 弹窗被拦就忽略 */ }
+          w = window.open(url, '_blank')
+        } catch (e) {
+          w = null
+        }
+        if (w) {
+          try { w.opener = null } catch (e) { /* 跨源时设不了，无所谓 */ }
+          return
+        }
+        try { window.location.assign(url) } catch (e) { /* 都不行就只能手动复制地址 */ }
       }
+
+      /** 用 <a> 而不是 <button>：中键 / 右键"在新标签打开"走浏览器原生行为 */
+      const pageLink = (label, p, ghost) => h('a', {
+        href: absAppPath(p),
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        style: Object.assign({}, ghost ? S.btnGhost : S.btn, {
+          display: 'inline-block',
+          textDecoration: 'none',
+          lineHeight: '1.35',
+        }),
+        onClick: (e) => {
+          e.preventDefault()
+          openPage(p)
+        },
+      }, label)
 
       function Panel() {
         return h('div', { style: S.wrap },
@@ -107,21 +142,13 @@ window.__ModuleLoader__.load((() => {
             h('h3', { style: S.title }, 'dsh-jmcomic/ehentai'),
             h('p', { style: S.desc },
               'JM 收藏、E 站收藏、检索与偏好推荐都由插件自己的页面承载。',
-              '点击下面的按钮会用新标签页打开，可以直接存书签。'
+              '点击下面的按钮会用新标签页打开，可以直接存书签。',
+              '万一点了没反应，右键复制链接地址，或中键在新标签打开。'
             ),
             h('div', { style: S.row },
-              h('button', {
-                style: S.btn,
-                onClick: () => open('/dsh-ehentai/jm'),
-              }, '打开收藏'),
-              h('button', {
-                style: S.btnGhost,
-                onClick: () => open('/dsh-ehentai/jm/stats'),
-              }, '词条统计'),
-              h('button', {
-                style: S.btnGhost,
-                onClick: () => open('/dsh-ehentai/'),
-              }, '打开设置页'),
+              pageLink('打开收藏', '/dsh-ehentai/jm'),
+              pageLink('词条统计', '/dsh-ehentai/jm/stats', true),
+              pageLink('打开设置页', '/dsh-ehentai/', true),
             ),
             h('div', { style: S.kv },
               h('span', null, 'JM 收藏'),

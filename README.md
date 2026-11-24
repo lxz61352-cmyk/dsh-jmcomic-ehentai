@@ -182,12 +182,14 @@ scripts/*.py        JM 的 5 个脚本副本（运行时要复制到数据目录
 test/test_routes.mjs   把全部路由打一遍
 test/test_scripts.mjs  检查渲染出的内联脚本语法
 test/test_units.mjs    离线单测：游标解析 / cookie 口径 / 302 跟随 / Python 探测
+test/test_client.mjs   面板入口检查：三个按钮的 href，以及「新标签打不开就退当前窗口」
 ```
 
 `npm test` 跑不到（没有 package 脚本），直接：
 
 ```powershell
 node test/test_units.mjs
+node test/test_client.mjs
 node test/test_routes.mjs
 node test/test_scripts.mjs
 ```
