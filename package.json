@@ -1,6 +1,6 @@
 {
   "name": "@dsh-jmcomic/ehentai",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "displayName": "dsh-jmcomic/ehentai",
   
   "description": "DeepSeek Harness 插件 dsh-jmcomic/ehentai：JM 收藏与检索。JM 收藏封面墙（悬停看作者与 tag、左键打开、右键下载），E-Hentai / ExHentai 检索、收藏同步、tag 偏好画像与推荐。独立运行，不依赖其他插件。",

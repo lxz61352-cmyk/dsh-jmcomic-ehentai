@@ -12,6 +12,7 @@ import http from 'node:http'
 const lib = new URL('../lib/', import.meta.url).href
 const { parseListPage, cookieOf, buildCtx } = await import(lib + 'eh.js')
 const { requestFollow } = await import(lib + 'http.js')
+const { isEhGalleryUrl } = await import(lib + 'ehdl.js')
 const { pythonCmd, pythonCandidates } = await import(lib + 'pycmd.js')
 
 let bad = 0
@@ -110,7 +111,13 @@ ok(/cookie=ipb_member_id=1/.test(same.body.toString('utf8')), '同源 302：Cook
 
 target.close(); jumper.close(); sameOrigin.close()
 
-// ── 5. Python 探测 ──
+// ── 5. 画廊地址判定（表站 / 里站都收） ──
+ok(isEhGalleryUrl('https://e-hentai.org/g/123/abcdef0123/'), '表站画廊地址通过')
+ok(isEhGalleryUrl('https://exhentai.org/g/123/abcdef0123/'), '里站画廊地址通过')
+ok(!isEhGalleryUrl('https://example.com/g/1/x/'), '别的站拒绝')
+ok(!isEhGalleryUrl('https://e-hentai.org/s/abc/1'), '非画廊地址（图片页）拒绝')
+
+// ── 6. Python 探测 ──
 const py = pythonCmd()
 ok(py && typeof py.cmd === 'string', 'pythonCmd 返回可执行名', JSON.stringify(py))
 console.log('    探测结果：' + JSON.stringify(pythonCandidates().filter((c) => c.usable)))
