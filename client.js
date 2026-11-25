@@ -80,6 +80,17 @@ window.__ModuleLoader__.load((() => {
           color: 'var(--dsh-text, #e6e2d8)',
           border: '1px solid var(--dsh-border, #2b2f3a)',
         },
+        btnSm: {
+          padding: '5px 13px',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontSize: 12.5,
+          fontFamily: 'inherit',
+          background: 'transparent',
+          color: 'var(--dsh-text, #e6e2d8)',
+          border: '1px solid var(--dsh-border, #2b2f3a)',
+          whiteSpace: 'nowrap',
+        },
         kv: {
           display: 'grid',
           gridTemplateColumns: 'auto 1fr',
@@ -107,9 +118,12 @@ window.__ModuleLoader__.load((() => {
        */
       const openPage = (p) => {
         const url = absAppPath(p)
+        // win=1 只在「真的开了新窗口」时带：页面据此才显示「关闭」按钮。
+        // 退成当前窗口跳转时不带——那种情况下 window.close() 会把整个 DSH 一起关掉。
+        const winUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'win=1'
         let w = null
         try {
-          w = window.open(url, '_blank')
+          w = window.open(winUrl, '_blank')
         } catch (e) {
           w = null
         }
@@ -117,6 +131,9 @@ window.__ModuleLoader__.load((() => {
           try { w.opener = null } catch (e) { /* 跨源时设不了，无所谓 */ }
           return
         }
+        // 退成当前窗口跳转：先抹掉「这是新窗口」的标记，否则页面会显示一个
+        // 会把整个 DSH 关掉的「关闭」按钮。
+        try { sessionStorage.removeItem('jm_new_win') } catch (e) { /* 拿不到就算了 */ }
         try { window.location.assign(url) } catch (e) { /* 都不行就只能手动复制地址 */ }
       }
 
@@ -136,19 +153,37 @@ window.__ModuleLoader__.load((() => {
         },
       }, label)
 
+      /** 切换查看栏里显示的页面：只改 iframe 的 src，不开新窗口 */
+      const viewBtn = (label, p) => h('button', {
+        type: 'button',
+        style: S.btnSm,
+        onClick: () => {
+          try {
+            const f = document.querySelector('iframe[name="jmview"]')
+            if (!f) return
+            const url = absAppPath(p) + (p.indexOf('?') >= 0 ? '&' : '?') + 'embed=1'
+            // 先把旧页面卸掉再挂新的：上一个页面还在跑请求时直接换 src，
+            // 有时候会把整个框一起拖住，看起来就像卡死了。
+            f.src = 'about:blank'
+            setTimeout(() => { try { f.src = url } catch (e) { /* 挂不上就算了 */ } }, 30)
+          } catch (e) { /* 环境不支持就当作没点 */ }
+        },
+      }, label)
+
       function Panel() {
         return h('div', { style: S.wrap },
           h('div', { style: S.card },
-            h('h3', { style: S.title }, 'dsh-jmcomic/ehentai'),
+            h('h3', { style: S.title }, 'JM / EH'),
             h('p', { style: S.desc },
-              'JM 收藏、E 站收藏、检索与偏好推荐都由插件自己的页面承载。',
-              '点击下面的按钮会用新标签页打开，可以直接存书签。',
-              '万一点了没反应，右键复制链接地址，或中键在新标签打开。'
+              '下面那块就是插件界面。按钮和内容都排在 DSH 自己的顶栏下方，',
+              '不会盖住窗口的关闭键。'
             ),
             h('div', { style: S.row },
-              pageLink('打开收藏', '/dsh-ehentai/jm'),
-              pageLink('词条统计', '/dsh-ehentai/jm/stats', true),
-              pageLink('打开设置页', '/dsh-ehentai/', true),
+              viewBtn('JM 收藏', '/dsh-ehentai/jm'),
+              viewBtn('E 站收藏', '/dsh-ehentai/eh'),
+              viewBtn('推荐', '/dsh-ehentai/recommend'),
+              viewBtn('检索', '/dsh-ehentai/explore'),
+              viewBtn('设置', '/dsh-ehentai/'),
             ),
             h('div', { style: S.kv },
               h('span', null, 'JM 收藏'),
@@ -159,6 +194,41 @@ window.__ModuleLoader__.load((() => {
               h('span', { style: S.code }, '/dsh-ehentai/jm/stats'),
               h('span', null, '设置'),
               h('span', { style: S.code }, '/dsh-ehentai/'),
+            )
+          ),
+          h('div', {
+            style: {
+              border: '1px solid var(--dsh-border, #2b2f3a)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              background: '#0e1014',
+              marginBottom: 12,
+            },
+          },
+            h('iframe', {
+              name: 'jmview',
+              src: absAppPath('/dsh-ehentai/jm') + '?embed=1',
+              title: 'dsh-jmcomic/ehentai 查看栏',
+              loading: 'lazy',
+              style: {
+                width: '100%',
+                height: 'min(78vh, 860px)',
+                minHeight: 460,
+                border: '0',
+                display: 'block',
+              },
+            })
+          ),
+          h('div', { style: S.card },
+            h('h3', { style: S.title }, '想开独立窗口'),
+            h('p', { style: S.desc },
+              '要更大空间或想存书签，就用这几个按钮新标签打开；',
+              '万一点了没反应，右键复制链接地址，或中键在新标签打开。'
+            ),
+            h('div', { style: S.row },
+              pageLink('打开收藏', '/dsh-ehentai/jm'),
+              pageLink('词条统计', '/dsh-ehentai/jm/stats', true),
+              pageLink('打开设置页', '/dsh-ehentai/', true),
             )
           ),
           h('div', { style: S.card },
@@ -188,7 +258,7 @@ window.__ModuleLoader__.load((() => {
 
         // 设置页分区：设置 → JM / EH
         slots.inject('settings.section', () => slots.register(
-          { name: 'settings.section', id: 'ehentai', order: 26, label: 'dsh-jmcomic/ehentai' },
+          { name: 'settings.section', id: 'ehentai', order: 26, label: 'jm/eh' },
           () => React.createElement(Panel, { ctx }),
         ))
 

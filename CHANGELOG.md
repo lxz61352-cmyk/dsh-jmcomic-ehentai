@@ -1,5 +1,54 @@
 # 更新记录
 
+## 0.2.4 — 2026-11-25
+
+### 采纳使用者那份本地改动（原样并进）
+
+- **`spawnSync` 把宿主冻住**：`lib/rec.js` 的 `runExplore()` 用同步 `spawnSync` 跑
+  `jm_explore.py`（超时 180 秒）。Node 是单线程，这一调用不返回，同进程里所有 HTTP 路由
+  都在它后面排队——点「按口味推荐」之后切页面整个界面就没反应，日志里一条错都没有。
+  改成 `spawn` + Promise，超时自己 `kill`；`recommendMany` / `recommendOne` 跟着改 async，
+  对话工具那边补 `await`。
+- **推荐改后台任务**：`POST /recommend/run`、`/recommend/eh` 立刻返回 `jobId`，新增
+  `GET /recommend/status?id=` 轮询；页面用 `sessionStorage` 记任务，切走再回来能接上
+  （30 分钟内）、没有未完成任务就把上次结果摆出来。任务表只留最近 20 个。
+- **嵌进宿主面板**：`?embed=1` 或 iframe 下加 `body.embed`（隐藏 header），同源
+  `target="_blank"` 链接改成就地跳转——Electron 的 `windowOpenHandler` 会静默拦掉，
+  点了跟卡住一样。
+- **「回 DSH」不再整页重载**：改成按钮，按三档处理（新窗口就 `window.close()`、同窗口
+  `history.back()`、都不行才跳 `../`）。
+- **关闭按钮的安全边界**：只有在 `?win=1` 打开的新窗口里才显示。**在 DSH 主窗口里调
+  `window.close()` 会把宿主连后台进程一起关掉**——这是 0.2.3 我加的那个按钮的隐患，已按
+  这个规则限住。
+- **`client.js` 改常驻查看栏**：面板里直接嵌 iframe（`?embed=1`），上面一排按钮切页，
+  不再开新窗口；切换时先 `about:blank` 再挂 `src`，避免上一页还在跑请求时把框拖住。
+- 命名统一：`settings.section` 的 label 与页面标题改成 `JM / EH`。
+
+### 我这边补的
+
+- **下载有进度了**（右键下载原来只弹一句「已开始下载」，之后成败全靠猜）：
+  - 所有页面共用 `page()` 里注入的 `dlToast` 提示条 + `dlWatchEh` / `dlWatchJm` 轮询器；
+  - E 站问 `/eh/status`：显示「下载中 12/40 张」、完成后报「缺第 N 页（重跑只补缺页）」、
+    以及「N 张只拿到显示版」；失败直接把 `msg` 报出来；
+  - JM 问 `/jm/status`：排队位次、已落盘张数、失败时日志尾部；
+  - `lib/jm.js` 从 jmcomic 的 `→ [路径]` 日志里统计已落盘页数（`jmJob().pages`），
+    脚本没给总数，所以只报已下张数；
+  - 每条入口（E 站收藏页、E 站详情页、JM 收藏页、JM 详情页、阅读器右键）都接上了。
+- **修掉一处残留**：阅读器右键菜单里 `window.open(..., '_blank', 'noopener')` 还带着
+  features 参数（0.2.1 修的是面板三个按钮，这里漏了）。
+- **`scripts/jm_login.py`**：补上 jmcomic `login()` 的两个坑——① 它只写 `AVS`，不写
+  `uid` / `username`（收藏接口要三个都在）；② 第一次登录响应常不带 `__cflb`，Cloudflare
+  粘性会话换节点后掉登录态，所以再登录一次合并 cookie。三个脚本改成调它（找不到
+  `jm_login.py` 时自动退化成旧行为）。**实测**：cookie 里 `__cflb` / `uid` / `username`
+  都在，收藏夹 9 页、第一页 20 条，不再 401。
+- `test/test_ui.mjs` 增加下载反馈断言（提示条、两个轮询器、各处入口都接上）。
+
+### 仍未处理
+
+- 独立窗口与宿主窗口的视觉重叠（需要宿主的窗口布局约定）。
+- `lib/jm.js` 收藏操作、`index.js` 探针里剩下的 `spawnSync`（秒级操作，影响小）。
+- `test/test_client.mjs` 仍按字面量顺序断言，面板结构一动就得改。
+
 ## 0.2.3 — 2026-11-24
 
 界面反馈那一批，全部落在这里。

@@ -39,6 +39,8 @@
 
 所有页面顶栏末尾都有「回 DSH」和「关闭」两个出口——插件页通常是以新窗口打开的，桌面端没有浏览器标签栏，没有出口就等于进得去出不来。
 
+**下载有进度反馈**：右键下载或详情页点下载之后，页面底部会出现一条提示条，实时显示「下载中 12/40 张」；结束时报完成数、缺了哪几页（重跑只补缺页）、有没有降级成显示版；失败会把原因直接写出来。JM 那边脚本不给总页数，所以只报「已落盘 N 张」。
+
 ## 安装
 
 插件要能被 DSH 的模块解析找到，而它 `import` 了宿主私有包 `@deepseek-ai/dsh-tools`。两种情况：
@@ -81,7 +83,7 @@ cmd /c mklink /J "<插件目录>\node_modules\@deepseek-ai\dsh-tools" `
 - Node.js ≥ 22（`node:sqlite` 是 22 才有的，20 上直接起不来）
 - Python + `jmcomic`、`pillow`（`pip install jmcomic pillow`），JM 的检索与下载走它
   - 解释器**不用指定版本**：`lib/pycmd.js` 按 `jm.python` → `DSH_JMPY` → `py -3.13` → `py -3` → `python` 顺序探测
-  - 5 个 `.py` 脚本在仓库 `scripts/` 下，运行时要复制到数据目录（见下）
+  - 6 个 `.py` 脚本在仓库 `scripts/` 下（含 `jm_login.py`），运行时要**整组**复制到数据目录（见下）
 - 一个能访问 e-hentai.org / 18comic 的代理（大陆环境必需）
 - 仅用检索时**不需要账号**；收藏与下载才需要
 
@@ -114,10 +116,10 @@ cmd /c mklink /J "<插件目录>\node_modules\@deepseek-ai\dsh-tools" `
 <数据目录>/
     settings.json
     ehentai.db / jm.json / jm_albums.json / jm_downloads.json
-    jm_explore.py  jm_fetch.py  jm_download_one.py  jm_fav.py  jm_thumbs.py
+    jm_explore.py  jm_fetch.py  jm_download_one.py  jm_fav.py  jm_thumbs.py  jm_login.py
 ```
 
-从仓库 `scripts/` 复制过去即可。升级插件时这几个脚本不用动，但**改了要同步回 `scripts/`**——它们不进 `node_modules`，很容易两边分叉。
+从仓库 `scripts/` 复制过去即可（`jm_login.py` 必须一起放，否则三个脚本会退化成老式登录、收藏接口一直 401）。升级插件时这几个脚本不用动，但**改了要同步回 `scripts/`**——它们不进 `node_modules`，很容易两边分叉。
 
 
 ### 凭证怎么存的
@@ -180,7 +182,7 @@ lib/jm.js           JM 数据、下载队列、封面缓存
 lib/explore.js      检索、严格校验、打分排序
 lib/rec.js          推荐
 lib/web.js          全部路由与页面渲染
-scripts/*.py        JM 的 5 个脚本副本（运行时要复制到数据目录）
+scripts/*.py        JM 的 6 个脚本副本（运行时要整组复制到数据目录）
 test/test_routes.mjs   把全部路由打一遍
 test/test_scripts.mjs  检查渲染出的内联脚本语法
 test/test_units.mjs    离线单测：游标解析 / cookie 口径 / 302 跟随 / Python 探测

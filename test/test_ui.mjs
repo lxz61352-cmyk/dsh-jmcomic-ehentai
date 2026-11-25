@@ -9,7 +9,7 @@
  *   · 收藏页 notice 是中性文案
  */
 const lib = new URL('../lib/', import.meta.url).href
-const { registerWeb, renderCollection, renderRecommend } = await import(lib + 'web.js')
+const { registerWeb, renderCollection, renderRecommend, renderJm } = await import(lib + 'web.js')
 
 let bad = 0
 const ok = (cond, name, extra = '') => {
@@ -39,6 +39,19 @@ ok(/封面取不到/.test(fav), '图片失败时有占位文案')
 ok(fav.includes('./thumb?u='), 'E 站封面走 /thumb 代理')
 ok(!/铸币/.test(fav), 'notice 文案已中性化')
 ok(fav.includes('igneous'), 'notice 说明了里站需要 igneous')
+
+// 下载反馈：提示条 + 进度轮询要覆盖所有页面（曾经点下载只有一句"已开始下载"）
+ok(fav.includes("id = 'dlToast'") || fav.includes('id="dlToast"'), '页面注入了下载提示条')
+ok(fav.includes('window.dlWatchEh'), 'E 站下载有进度轮询')
+ok(fav.includes('window.dlWatchJm'), 'JM 下载有进度轮询')
+ok(/dlWatchEh\(cur\.url/.test(fav), 'E 站收藏页下载后接上了轮询')
+ok(fav.includes("fetch('./eh/download'"), 'E 站收藏页仍然接下载接口')
+
+const jmPage = renderJm(
+  { items: [{ id: '1198811', title: 't', tags: ['tag:a'], author: 'a', pages: 10, likes: 1 }], updatedAt: Date.now() },
+  { webDomain: '18comic.vip' }
+)
+ok(/dlWatchJm\(cur\.id/.test(jmPage), 'JM 收藏页右键下载后接上了轮询')
 
 const rec = renderRecommend({ webDomain: '18comic.vip' })
 ok(rec.includes('id="tabJm"') && rec.includes('id="tabEh"'), '推荐页有 JM / E 站两个 tab')

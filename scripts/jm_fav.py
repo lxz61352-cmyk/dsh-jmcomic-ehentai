@@ -27,9 +27,19 @@ if not user or not pwd:
 
 import jmcomic  # noqa: E402
 
+# 登录要补 uid / username 与 __cflb 粘性会话，否则收藏接口一直 401「請先登入會員」。
+# 单独把这个脚本拷走时（旁边没有 jm_login.py）就退化成旧的直接登录，不至于跑不起来。
+try:
+    from jm_login import login_jm
+except ImportError:  # noqa: BLE001
+    def login_jm(client, user, pwd):
+        client.login(user, pwd)
+        return client
+
+
 try:
     client = jmcomic.JmOption.default().new_jm_client()
-    client.login(user, pwd)
+    login_jm(client, user, pwd)
     if action == "add":
         client.add_favorite_album(aid, folder_id="0")
         print("OK", aid)

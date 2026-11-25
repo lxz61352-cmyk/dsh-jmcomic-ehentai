@@ -40,6 +40,16 @@ COVER = "https://cdn-msp.jmapinodeudzn.net/media/albums/{}.jpg"
 
 import jmcomic  # noqa: E402
 
+# 登录要补 uid / username 与 __cflb 粘性会话，否则收藏接口一直 401「請先登入會員」。
+# 单独把这个脚本拷走时（旁边没有 jm_login.py）就退化成旧的直接登录，不至于跑不起来。
+try:
+    from jm_login import login_jm
+except ImportError:  # noqa: BLE001
+    def login_jm(client, user, pwd):
+        client.login(user, pwd)
+        return client
+
+
 
 def load_cache():
     try:
@@ -53,7 +63,7 @@ def main():
     cache = load_cache()
     client = jmcomic.JmOption.default().new_jm_client()
     if user and pwd:
-        client.login(user, pwd)
+        login_jm(client, user, pwd)
 
     # 1) 候选：query 支持用 | 分隔多路召回（同义、别名、错别字变体），
     #    各路分别搜索再合并去重——JM 的搜索是 AND，没法在一次里表达 OR。

@@ -750,7 +750,7 @@ export function apply(ctx, config) {
     },
     async execute(args) {
       const c = cfg()
-      const r = recommendOne(c, {
+      const r = await recommendOne(c, {
         mode: String(args.mode || 'taste') === 'random' ? 'random' : 'taste',
         excludeDownloaded: !!args.excludeDownloaded,
         allowRepeat: !!args.allowRepeat,

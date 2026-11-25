@@ -93,7 +93,8 @@ assigned.length = 0
 let prevented = false
 links[0].props.onClick({ preventDefault: () => { prevented = true } })
 ok(prevented, 'onClick 拦掉了默认导航（由自己控制）')
-ok(opened.length === 1 && opened[0].url === '/dsh-ehentai/jm', 'window.open 用了正确地址', JSON.stringify(opened))
+ok(opened.length === 1 && opened[0].url.split('?')[0] === '/dsh-ehentai/jm', 'window.open 用了正确地址', JSON.stringify(opened))
+ok(opened[0] && /[?&]win=1(&|$)/.test(opened[0].url || ''), '新窗口打开带 win=1（页面据此才显示关闭按钮）', JSON.stringify(opened))
 ok(opened[0] && opened[0].target === '_blank', 'window.open 以新标签打开')
 ok(assigned.length === 0, '正常时不该退到当前窗口')
 
